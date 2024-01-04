@@ -4,33 +4,61 @@ local util = require("colorscheme-extender.util")
 -- Table to hold highlights from nvim_get_hl()
 M._highlights = {}
 
--- Table to hold colors. Key is the RGB
-M._colors = {}
+-- Tables to hold colors. Value is the RRGGBB value
+M._fgColors = {}
+M._bgColors = {}
+M._fgBgColors = {}
 
 -- Testing functions to see as we go
 function M.start()
-    -- Create a new tab page to work with
-    -- vim.cmd.tabnew()
-
-    -- Get a table of the current highlights
+    -- Get a table of the highlights of the current colorscheme
     M._highlights = vim.api.nvim_get_hl(0, {})
 
-    -- Test the RGB
-    local r, g, b
-    r, g, b = util.getRGB(vim.inspect(M._highlights.Comment.fg))
-    print(r)
-    print(g)
-    print(b)
+    -- Three tables would be used for the three kinds of highlights: fg only, bg
+    -- only, and fg and background. The reason is because the user is probably
+    -- only looking for one of these three types. It doesn't make sense to mix
+    -- them when displaying in our buffer.
 
-    local h, s, v
-    h, s, v = util.RGBToHSV(vim.inspect(M._highlights.Comment.fg))
+    -- Indices for the three tables created
+    local fgi, bgi, fgBgi = 1, 1, 1
 
-    print(h)
-    print(s)
-    print(v)
+    -- Construct the three tables from the global highlight table
+    for _,v in pairs(M._highlights) do
+        if v.fg and v.bg then
+            M._fgBgColors[fgBgi] = {["fg"] = v.fg, ["bg"] = v.bg}
+            fgBgi = fgBgi + 1
+        elseif v.fg then
+            M._fgColors[fgi] = v.fg
+            fgi = fgi + 1
+        elseif v.bg then
+            M._bgColors[bgi] = v.bg
+            bgi = bgi + 1
+        end
+    end
 
-    -- Sort
-    -- M._colors = table.sort()
+    -- print(vim.inspect(M._fgColors))
+
+    -- Sort the three tables based on HSV
+    table.sort(M._fgColors, util.HSVCompare)
+    table.sort(M._bgColors, util.HSVCompare)
+    table.sort(M._fgBgColors, util.HSVCompare)
+
+    -- Remove duplicate entriers for the three tables
+    util.removeDuplicates(M._fgColors)
+    util.removeDuplicates(M._bgColors)
+    util.removeDuplicates(M._fgBgColors)
+
+    -- First create a namespace just for our highlight group so we can group
+    -- them easily nvim_create_namespace()
+    -- Then add all the highlights we have from our three tables with
+    -- nvim_set_hl()
+    -- Finally, add the highlights with nvim_buf_add_highlight()
+
+    -- Create a new tab page to work with
+    vim.cmd.tabnew()
+
+    -- Put some text in it
+
 end
 
 -- On setup, create a new command for users to call
