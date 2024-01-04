@@ -3,7 +3,6 @@ local M = {}
 -- Function to convert the RRGGBB value returned by nvim API to separate R, G, B
 -- Takes RRGGBB (hex now represented as decimal)
 function M.getRGB(rgb)
-    -- Get the individual r, g, and b values
     local r = math.floor(rgb / 65536)
     rgb = rgb - r * 65536
     local g = math.floor(rgb / 256)
@@ -13,7 +12,7 @@ function M.getRGB(rgb)
     return r, g, b
 end
 
--- Function to Convert sRGB to Oklab
+-- Function to Convert sRGB to HSV
 -- Takes the decimal of RRGGBB as an argument
 function M.RGBToHSV(rgb)
     -- Get separate R, G, and B values
@@ -49,6 +48,70 @@ function M.RGBToHSV(rgb)
     v = max
 
     return h, s, v
+end
+
+-- Function that compares two RGB values based on which has the smaller HSV
+-- Takes two RRGGBB values, returns true if the first is smaller in HSV than
+-- the second
+function M.HSVCompare(one, two)
+    local oneH, oneS, oneV
+    local twoH, twoS, twoV
+
+    if type(one) ~= "table" then
+        oneH, oneS, oneV = M.RGBToHSV(one)
+        twoH, twoS, twoV = M.RGBToHSV(two)
+    else
+        oneH, oneS, oneV = M.RGBToHSV(one["bg"])
+        twoH, twoS, twoV = M.RGBToHSV(two["bg"])
+    end
+
+    if oneH < twoH then
+        return true
+    elseif oneH > twoH then
+        return false
+    else
+        if oneS < twoS then
+            return true
+        elseif oneS > twoS then
+            return false
+        else
+            if oneV < twoV then
+                return true
+            else
+                return false
+            end
+        end
+    end
+end
+
+function M.removeDuplicates(tab)
+    print("--------------")
+
+    local prev = tab[#tab]
+    local first = true
+
+    for i=#tab, 1, -1 do
+        if type(prev) == "table" then
+            if not first then
+                if vim.deep_equal(prev, tab[i]) then
+                    table.remove(tab, i)
+                else
+                    prev = tab[i]
+                end
+            end
+        elseif type(prev) == "number" then
+            if not first then
+                if tab[i] == prev then
+                    table.remove(tab, i)
+                else
+                    prev = tab[i]
+                end
+            end
+        end
+
+        first = false
+    end
+
 end
 
 return M
