@@ -12,7 +12,7 @@ M._fgBgColors = {}
 -- Testing functions to see as we go
 function M.start()
     -- Get a table of the highlights of the current colorscheme
-    M._highlights = vim.api.nvim_get_hl(0, {name = nil, id = nil, link = true})
+    M._highlights = vim.api.nvim_get_hl(0, {name = nil, id = nil, link = false})
 
     -- Three tables would be used for the three kinds of highlights: fg only, bg
     -- only, and fg and background. The reason is because the user is probably
