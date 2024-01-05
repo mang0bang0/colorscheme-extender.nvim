@@ -57,9 +57,9 @@ function M.HSVCompare(one, two)
     local oneH, oneS, oneV
     local twoH, twoS, twoV
 
-    if type(one) ~= "table" then
-        oneH, oneS, oneV = M.RGBToHSV(one)
-        twoH, twoS, twoV = M.RGBToHSV(two)
+    if one["fg"] then
+        oneH, oneS, oneV = M.RGBToHSV(one["fg"])
+        twoH, twoS, twoV = M.RGBToHSV(two["fg"])
     else
         oneH, oneS, oneV = M.RGBToHSV(one["bg"])
         twoH, twoS, twoV = M.RGBToHSV(two["bg"])
@@ -91,21 +91,11 @@ function M.removeDuplicates(tab)
     local first = true
 
     for i=#tab, 1, -1 do
-        if type(prev) == "table" then
-            if not first then
-                if vim.deep_equal(prev, tab[i]) then
-                    table.remove(tab, i)
-                else
-                    prev = tab[i]
-                end
-            end
-        elseif type(prev) == "number" then
-            if not first then
-                if tab[i] == prev then
-                    table.remove(tab, i)
-                else
-                    prev = tab[i]
-                end
+        if not first then
+            if prev.fg == tab[i].fg and prev.bg == tab[i].bg then
+                table.remove(tab, i)
+            else
+                prev = tab[i]
             end
         end
 

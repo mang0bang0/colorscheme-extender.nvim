@@ -23,20 +23,18 @@ function M.start()
     local fgi, bgi, fgBgi = 1, 1, 1
 
     -- Construct the three tables from the global highlight table
-    for _,v in pairs(M._highlights) do
+    for k,v in pairs(M._highlights) do
         if v.fg and v.bg then
-            M._fgBgColors[fgBgi] = {["fg"] = v.fg, ["bg"] = v.bg}
+            M._fgBgColors[fgBgi] = {["name"] = k, ["fg"] = v.fg, ["bg"] = v.bg}
             fgBgi = fgBgi + 1
         elseif v.fg then
-            M._fgColors[fgi] = v.fg
+            M._fgColors[fgi] = {["name"] = k, ["fg"] = v.fg}
             fgi = fgi + 1
         elseif v.bg then
-            M._bgColors[bgi] = v.bg
+            M._bgColors[bgi] = {["name"] = k, ["bg"] = v.bg}
             bgi = bgi + 1
         end
     end
-
-    -- print(vim.inspect(M._fgColors))
 
     -- Sort the three tables based on HSV
     table.sort(M._fgColors, util.HSVCompare)
@@ -48,6 +46,9 @@ function M.start()
     util.removeDuplicates(M._bgColors)
     util.removeDuplicates(M._fgBgColors)
 
+    -- print(vim.inspect(M._fgColors))
+    -- print(vim.inspect(M._bgColors))
+    print(vim.inspect(M._fgBgColors))
     -- First create a namespace just for our highlight group so we can group
     -- them easily nvim_create_namespace()
     -- Then add all the highlights we have from our three tables with
@@ -55,7 +56,7 @@ function M.start()
     -- Finally, add the highlights with nvim_buf_add_highlight()
 
     -- Create a new tab page to work with
-    vim.cmd.tabnew()
+    -- vim.cmd.tabnew()
 
     -- Put some text in it
 
