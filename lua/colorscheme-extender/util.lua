@@ -1,22 +1,22 @@
 local M = {}
 
--- Function to convert the RRGGBB value returned by nvim API to separate R, G, B
+-- Function to convert RRGGBB into a table of HSV
 -- Takes RRGGBB (hex now represented as decimal)
-function M.getRGB(rgb)
+-- Returns nil if nil is passed in, otherwise a table that looks like:
+-- {h = h, s = s, v = v}
+function M.RGBToHSV(rgb)
+    -- If nothing is passed in, return nothing.
+    -- This is used because the function that calls this one can pass in nil
+    -- values and expects nil in return
+    if rgb == nil then
+        return nil
+    end
+
     local r = math.floor(rgb / 65536)
     rgb = rgb - r * 65536
     local g = math.floor(rgb / 256)
     rgb = rgb - g * 256
     local b = rgb
-
-    return r, g, b
-end
-
--- Function to Convert sRGB to HSV
--- Takes the decimal of RRGGBB as an argument
-function M.RGBToHSV(rgb)
-    -- Get separate R, G, and B values
-    local r, g, b = M.getRGB(rgb)
 
     -- Change from [0, 255] to [0, 1]
     r = r / 255
@@ -47,50 +47,116 @@ function M.RGBToHSV(rgb)
 
     v = max
 
-    return h, s, v
+    return {h = h, s = s, v = v}
 end
 
--- Function that compares two RGB values based on which has the smaller HSV
--- Takes two RRGGBB values, returns true if the first is smaller in HSV than
--- the second
-function M.HSVCompare(one, two)
-    local oneH, oneS, oneV
-    local twoH, twoS, twoV
+-- Function to find the fg and bg HSV of a highlight group
+-- Parameter is a highlight group table
+-- Returns a table that looks like this:
+--[[
+    {
+        fg = {h = h, s = s, v = v},
+        bg = {h = h, s = s, v = v}
+    }
+    Note that fg or bg can be equal to nil
+--]]
+function M.getHSV(color)
+    -- Get separate HSV values as a table. Can be nil if say colors.bg doesn't
+    -- exist
+    local fgHSV = M.RGBToHSV(color.fg)
+    local bgHSV = M.RGBToHSV(color.bg)
 
-    if one["fg"] then
-        oneH, oneS, oneV = M.RGBToHSV(one["fg"])
-        twoH, twoS, twoV = M.RGBToHSV(two["fg"])
-    else
-        oneH, oneS, oneV = M.RGBToHSV(one["bg"])
-        twoH, twoS, twoV = M.RGBToHSV(two["bg"])
-    end
+    return {fg = fgHSV, bg = bgHSV}
+end
 
-    if oneH < twoH then
-        return true
-    elseif oneH > twoH then
-        return false
+-- Compares two HSV values one and two
+-- Returns "<", "=", or ">"
+function M.compareHSV(one, two, force)
+    -- If the two H values are different, then we just compare
+    if one.h < two.h then
+        return "<"
+    elseif one.h > two.h then
+        return ">"
+    -- Otherwise if H are the same, we compare the S values
     else
-        if oneS < twoS then
-            return true
-        elseif oneS > twoS then
-            return false
+        if one.s < two.s then
+            return "<"
+        elseif one.s > two.s then
+            return ">"
         else
-            if oneV < twoV then
-                return true
+            if one.v < two.v then
+                return "<"
+            elseif one.v > two.v then
+                return ">"
             else
-                return false
+                return "="
             end
         end
     end
 end
 
-function M.removeDuplicates(tab)
-    print("--------------")
+-- Function that compares two color entries in the color table.
+-- Takes two color table entires, returns true if the first color is
+-- lower on the HSV scale
+function M.HSVSort(one, two)
+    -- These two variables have this structure:
+    --[[
+    {
+        fg = { h = h, s = s, v = v },
+        bg = { h = h, s = s, v = v }
+    }
+    ]]--
+    -- Note that fg or bg can equal nil if this highlight group doesn't have fg
+    -- or bg defined
 
+    local oneHSV = M.getHSV(one)
+    local twoHSV = M.getHSV(two)
+    local compResult
+
+    -- If bg exists, we compare it first
+    if oneHSV.bg then
+        compResult = M.compareHSV(oneHSV.bg, twoHSV.bg)
+
+        if compResult == "<" then
+            return true
+        elseif compResult == ">" then
+            return false
+        -- If the bgs are the same, check if fg is defined. If it is, then
+        -- compare the fgs, otherwise just return true.
+        else
+            if oneHSV.fg then
+                compResult = M.compareHSV(oneHSV.fg, twoHSV.fg)
+
+                if compResult == "<" then
+                    return true
+                elseif compResult == ">" then
+                    return false
+                else
+                    return one.name < two.name
+                end
+            else
+                return true
+            end
+        end
+    -- Otherwise we compare bg or fg, whichever exists
+    else
+        compResult = M.compareHSV(oneHSV.fg, twoHSV.fg)
+
+        if compResult == "<"  then
+            return true
+        elseif compResult == ">" then
+            return false
+        else
+            return one.name < two.name
+        end
+    end
+end
+
+function M.removeDuplicates(tab)
     local prev = tab[#tab]
     local first = true
 
-    for i=#tab, 1, -1 do
+    for i = #tab, 1, -1 do
         if not first then
             if prev.fg == tab[i].fg and prev.bg == tab[i].bg then
                 table.remove(tab, i)
