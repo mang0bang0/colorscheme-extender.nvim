@@ -135,7 +135,7 @@ function M.HSVSort(one, two)
                     return one.name < two.name
                 end
             else
-                return true
+                return one.name < two.name
             end
         end
     -- Otherwise we compare bg or fg, whichever exists
