@@ -4,19 +4,19 @@ local M = {}
 -- Takes RRGGBB (hex now represented as decimal)
 -- Returns nil if nil is passed in, otherwise a table that looks like:
 -- {h = h, s = s, v = v}
-function M.RGBToHSV(rgb)
+function M.RGBToHSV(rrggbb)
     -- If nothing is passed in, return nothing.
     -- This is used because the function that calls this one can pass in nil
     -- values and expects nil in return
-    if rgb == nil then
+    if rrggbb == nil then
         return nil
     end
 
-    local r = math.floor(rgb / 65536)
-    rgb = rgb - r * 65536
-    local g = math.floor(rgb / 256)
-    rgb = rgb - g * 256
-    local b = rgb
+    local r = math.floor(rrggbb / 65536)
+    rrggbb = rrggbb - r * 65536
+    local g = math.floor(rrggbb / 256)
+    rrggbb = rrggbb - g * 256
+    local b = rrggbb
 
     -- Change from [0, 255] to [0, 1]
     r = r / 255
