@@ -1,5 +1,28 @@
 local M = {}
 
+-- Function that constructs a demo line in the buffer
+-- entry is the string of each entry, indent is an integer that's the number of
+-- spaces before the text, and entriesPerLine is the number of entries on this
+-- line
+function M._constructLine(entry, indent, entriesPerLine)
+    local lineText = ""
+
+    -- First add the indents in the beginning
+    for _ = 1, indent do
+        lineText = lineText .. " "
+    end
+
+    -- Then add the entries after
+    for i = 1, entriesPerLine do
+        lineText = lineText .. entry
+        if i < entriesPerLine then
+            lineText = lineText .. " "
+        end
+    end
+
+    return lineText
+end
+
 -- Function to convert RRGGBB into a table of HSV
 -- Takes RRGGBB (hex now represented as decimal)
 -- Returns nil if nil is passed in, otherwise a table that looks like:

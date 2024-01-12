@@ -11,34 +11,11 @@ M._colors = {{}, {}, {}}
 -- This holds the buffer number of the demo buffer
 M._bufNum = 0
 
--- Function that constructs a demo line in the buffer
--- entry is the string of each entry, indent is an integer that's the number of
--- spaces before the text, and entriesPerLine is the number of entries on this
--- line
-function M._constructLine(entry, indent, entriesPerLine)
-    local lineText = ""
-
-    -- First add the indents in the beginning
-    for _ = 1, indent do
-        lineText = lineText .. " "
-    end
-
-    -- Then add the entries after
-    for i = 1, entriesPerLine do
-        lineText = lineText .. entry
-        if i < entriesPerLine then
-            lineText = lineText .. " "
-        end
-    end
-
-    return lineText
-end
-
 function M._populateBuffer(entry, indent)
     -- Make sure the buffer is modifiable
     vim.opt_local.modifiable = true
 
-    -- Clear the buffer
+    -- Clear the buffer and its highlights
     vim.api.nvim_buf_set_lines(M._bufNum, 0, -1, false, {})
 
     -- Set each line to be 80 chars wide
@@ -61,7 +38,7 @@ function M._populateBuffer(entry, indent)
         end
 
         -- Construct the text of a full line
-        local lineText = M._constructLine(entry, indent, entriesPerLine)
+        local lineText = util._constructLine(entry, indent, entriesPerLine)
 
         -- Populate an array with the guarenteed full lines
         local lines = {}
@@ -74,7 +51,7 @@ function M._populateBuffer(entry, indent)
 
         -- If there's a partial line, construct it
         if partial then
-            lineText = M._constructLine(entry, indent, #colors % entriesPerLine)
+            lineText = util._constructLine(entry, indent, #colors % entriesPerLine)
         end
 
         -- Add the last line
@@ -158,7 +135,7 @@ end
 function M.setup()
     vim.api.nvim_create_user_command(
         "ColorschemeExtend",
-        function () require("colorscheme-extender").start("x", 1) end,
+        function () require("colorscheme-extender").start("gamba", 2) end,
         {}
     )
 end
