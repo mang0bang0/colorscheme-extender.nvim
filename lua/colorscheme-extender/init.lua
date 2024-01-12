@@ -5,7 +5,8 @@ local util = require("colorscheme-extender.util")
 M._highlights = {}
 
 -- Tables to hold colors. Value is the RRGGBB value
--- Index 1 is fg, 2 is bg, 3 is fgbg
+-- Index 1 is fg, 2 is bg, 3 is fgbg. Only indices and not keys are used for
+-- table traversal
 M._colors = {{}, {}, {}}
 
 -- This holds the buffer number of the demo buffer
@@ -71,7 +72,6 @@ function M._populateBuffer(entry, indent)
 
         -- Add highlights
         for i,val in ipairs(colors) do
-            -- TODO: arithmetic need
             vim.api.nvim_buf_add_highlight(
                 M._bufNum,
                 -1,
@@ -91,7 +91,7 @@ function M._populateBuffer(entry, indent)
 end
 
 -- Testing functions to see as we go
-function M.start(text, indent)
+function M.start(text, indent, pattern)
     -- Get a table of the highlights of the current colorscheme
     M._highlights = vim.api.nvim_get_hl(0, {})
 
@@ -100,14 +100,21 @@ function M.start(text, indent)
     -- only looking for one of these three types. It doesn't make sense to mix
     -- them when displaying in our buffer.
 
-    -- Construct the three tables from the global highlight table
+    -- Construct the three tables from the global highlight table, checking if
+    -- the user provided regex matches. If there is a match, it is not added!
+    -- Note that it does not completely remove that color, it only excludes
+    -- highlight groups with that name
     for k,v in pairs(M._highlights) do
-        if v.fg and v.bg then
-            table.insert(M._colors[3], {name = k, fg = v.fg, bg = v.bg})
-        elseif v.fg then
-            table.insert(M._colors[1], {name = k, fg = v.fg})
-        elseif v.bg then
-            table.insert(M._colors[2], {name = k, bg = v.bg})
+        if not (pattern and vim.regex(pattern):match_str(k)) then
+            if v.fg and v.bg then
+                table.insert(M._colors[3], {name = k, fg = v.fg, bg = v.bg})
+            elseif v.fg then
+                table.insert(M._colors[1], {name = k, fg = v.fg})
+            elseif v.bg then
+                table.insert(M._colors[2], {name = k, bg = v.bg})
+            end
+        else
+            print("Filtered " .. k .. "\n")
         end
     end
 
@@ -132,10 +139,11 @@ function M.start(text, indent)
 end
 
 -- On setup, create a new command for users to call
+-- TODO: add support for multpile regex
 function M.setup()
     vim.api.nvim_create_user_command(
         "ColorschemeExtend",
-        function () require("colorscheme-extender").start("gamba", 2) end,
+        function () require("colorscheme-extender").start("gamba", 2, "^DevIcon") end,
         {}
     )
 end
