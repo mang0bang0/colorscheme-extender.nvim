@@ -10,20 +10,32 @@ M._highlights = {}
 M._colors = {{}, {}, {}}
 
 -- This holds the buffer number of the demo buffer
-M._bufNum = 0
+M._demoBufNum = 0
+-- This holds the buffer number of the I/O buffer
+M._ioBufNum = 0
+-- This holds the text displayed in the demo buffer
+M._text = ""
+-- This holds the indents to the left of the demo buffer
+M._indent = 0
+-- This holds the namespace ID of the extmarks used for highlighting in the demo
+-- buffer
+M._nsid = 0
 
-function M._populateBuffer(entry, indent)
+function M._populateDemoBuffer(text, indent)
     -- Make sure the buffer is modifiable
     vim.opt_local.modifiable = true
 
-    -- Clear the buffer and its highlights
-    vim.api.nvim_buf_set_lines(M._bufNum, 0, -1, false, {})
+    -- Clear the highlights in the demo buffer
+    vim.api.nvim_buf_clear_namespace(0, 0, 0, -1)
+
+    -- Clear the demo buffer
+    vim.api.nvim_buf_set_lines(M._demoBufNum, 0, -1, false, {})
 
     -- Set each line to be 80 chars wide
     local lineWidth = 80
 
     -- -5 so that we have some space on the very left
-    local entriesPerLine = math.floor((lineWidth + 1 - indent) / (string.len(entry) + 1))
+    local entriesPerLine = math.floor((lineWidth + 1 - indent) / (string.len(text) + 1))
     local startingLineIndex = 0
 
     -- For each table, fg, bg, and fgBg
@@ -39,7 +51,7 @@ function M._populateBuffer(entry, indent)
         end
 
         -- Construct the text of a full line
-        local lineText = util._constructLine(entry, indent, entriesPerLine)
+        local lineText = util._constructLine(text, indent, entriesPerLine)
 
         -- Populate an array with the guarenteed full lines
         local lines = {}
@@ -52,7 +64,7 @@ function M._populateBuffer(entry, indent)
 
         -- If there's a partial line, construct it
         if partial then
-            lineText = util._constructLine(entry, indent, #colors % entriesPerLine)
+            lineText = util._constructLine(text, indent, #colors % entriesPerLine)
         end
 
         -- Add the last line
@@ -63,7 +75,7 @@ function M._populateBuffer(entry, indent)
 
         -- Set the buffer
         vim.api.nvim_buf_set_lines(
-            M._bufNum,
+            M._demoBufNum,
             startingLineIndex,
             startingLineIndex + numOfLines,
             false,
@@ -73,13 +85,13 @@ function M._populateBuffer(entry, indent)
         -- Add highlights
         for i,val in ipairs(colors) do
             vim.api.nvim_buf_add_highlight(
-                M._bufNum,
+                M._demoBufNum,
                 -1,
                 val.name,
                 math.floor((i - 1) / entriesPerLine + startingLineIndex),
-                indent + (i - 1) % entriesPerLine * (string.len(entry) + 1),
-                indent + (i - 1) % entriesPerLine * (string.len(entry) + 1) +
-                    string.len(entry)
+                indent + (i - 1) % entriesPerLine * (string.len(text) + 1),
+                indent + (i - 1) % entriesPerLine * (string.len(text) + 1) +
+                    string.len(text)
             )
         end
 
@@ -91,7 +103,11 @@ function M._populateBuffer(entry, indent)
 end
 
 -- Testing functions to see as we go
-function M.start(text, indent, pattern)
+function M.start(textInput, indentInput, pattern)
+    -- Set global variables based on user input
+    M._text = textInput
+    M._indent = indentInput
+
     -- Get a table of the highlights of the current colorscheme
     M._highlights = vim.api.nvim_get_hl(0, {})
 
@@ -132,10 +148,20 @@ function M.start(text, indent, pattern)
     vim.cmd.tabnew()
 
     -- Get the buffer number of the demo buffer
-    M._bufNum = vim.api.nvim_get_current_buf()
+    M._demoBufNum = vim.api.nvim_get_current_buf()
+
+    -- Open a vertically split window for I/O
+    vim.cmd.vnew()
+
+    -- Get the buffer number of the I/O buffer
+    M._ioBufNum = vim.api.nvim_get_current_buf()
 
     -- Add the texts and highlights to the tab
-    M._populateBuffer(text, indent)
+    M._populateDemoBuffer(M._text, M._indent)
+end
+
+function M.getColorUnderCursor()
+
 end
 
 -- On setup, create a new command for users to call
