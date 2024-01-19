@@ -9,21 +9,27 @@ M._highlights = {}
 -- table traversal
 M._colors = {{}, {}, {}}
 
--- This holds the buffer number of the demo buffer
+-- The buffer and window number of the demo buffer
 M._demoBufNum = 0
--- This holds the buffer number of the I/O buffer
+M._demoWinNum = 0
+-- The buffer and window number of the I/O buffer
 M._ioBufNum = 0
--- This holds the text displayed in the demo buffer
+M._ioWinNum = 0
+-- The text displayed in the demo buffer
 M._text = ""
--- This holds the indents to the left of the demo buffer
+-- The indents to the left of the demo buffer
 M._indent = 0
--- This holds the namespace ID of the extmarks used for highlighting in the demo
+-- The namespace ID of the extmarks used for highlighting in the demo
 -- buffer
 M._nsid = 0
 
-function M._populateDemoBuffer(text, indent)
+function M._setDemoBuffer(text, indent)
+    -- Move to the demo window
+    vim.api.nvim_set_current_win(M._demoWinNum)
+
     -- Make sure the buffer is modifiable
     vim.opt_local.modifiable = true
+    vim.opt_local.readonly = false
 
     -- Clear the highlights in the demo buffer
     vim.api.nvim_buf_clear_namespace(0, 0, 0, -1)
@@ -100,6 +106,7 @@ function M._populateDemoBuffer(text, indent)
 
     -- Set the buffer to no longer be modifiable
     vim.opt_local.modifiable = false
+    vim.opt_local.readonly = true
 end
 
 -- Testing functions to see as we go
@@ -149,15 +156,17 @@ function M.start(textInput, indentInput, pattern)
 
     -- Get the buffer number of the demo buffer
     M._demoBufNum = vim.api.nvim_get_current_buf()
+    M._demoWinNum = vim.api.nvim_get_current_win()
 
     -- Open a vertically split window for I/O
     vim.cmd.vnew()
 
     -- Get the buffer number of the I/O buffer
     M._ioBufNum = vim.api.nvim_get_current_buf()
+    M._ioWinNum = vim.api.nvim_get_current_win()
 
     -- Add the texts and highlights to the tab
-    M._populateDemoBuffer(M._text, M._indent)
+    M._setDemoBuffer(M._text, M._indent)
 end
 
 function M.getColorUnderCursor()
