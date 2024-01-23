@@ -19,6 +19,8 @@ M._ioWinNum = 0
 -- buffer
 M._nsid = 0
 
+-- Fills out the M._colors table, filtering out highlights with names that match
+-- the vim regex pattern
 function M._getHighlights(pattern)
     -- Get a table of the highlights of the current colorscheme
     M._highlights = vim.api.nvim_get_hl(0, {})
@@ -56,19 +58,6 @@ function M._getHighlights(pattern)
     util.removeDuplicates(M._colors[2])
     util.removeDuplicates(M._colors[3])
 
-    -- Create a new tab page to work with
-    vim.cmd.tabnew()
-
-    -- Get the buffer number of the demo buffer
-    M._demoBufNum = vim.api.nvim_get_current_buf()
-    M._demoWinNum = vim.api.nvim_get_current_win()
-
-    -- Open a vertically split window for I/O
-    vim.cmd.vnew()
-
-    -- Get the buffer number of the I/O buffer
-    M._ioBufNum = vim.api.nvim_get_current_buf()
-    M._ioWinNum = vim.api.nvim_get_current_win()
 end
 
 function M._setDemoBuffer(text, indent)
@@ -159,10 +148,31 @@ function M._setDemoBuffer(text, indent)
     vim.opt_local.readonly = true
 end
 
+function M._createTab()
+    -- Create a new tab page to work with
+    vim.cmd.tabnew()
+
+    -- Get the buffer number of the demo buffer
+    M._demoBufNum = vim.api.nvim_get_current_buf()
+    M._demoWinNum = vim.api.nvim_get_current_win()
+
+    -- Open a vertically split window for I/O
+    vim.cmd.vnew()
+
+    -- Get the buffer number of the I/O buffer
+    M._ioBufNum = vim.api.nvim_get_current_buf()
+    M._ioWinNum = vim.api.nvim_get_current_win()
+
+end
+
 -- Testing functions to see as we go
 function M.start(text, indent, pattern)
     -- Get and categorize all the highlight groups
     M._getHighlights(pattern)
+
+    -- Create plugin tab
+    M._createTab()
+
     -- Add the texts and highlights to the tab
     M._setDemoBuffer(text, indent)
 end
