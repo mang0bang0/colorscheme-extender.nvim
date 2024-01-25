@@ -60,7 +60,12 @@ function M._getHighlights(pattern)
 
 end
 
+-- Sets the demo buffer with indents and text highlighted with all
+-- unique highlights in the colorscheme
 function M._setDemoBuffer(text, indent)
+    -- Create a namespace for our highlights and record its nsid
+    M._nsid = vim.api.nvim_create_namespace("colorscheme-extender")
+
     -- Move to the demo window
     vim.api.nvim_set_current_win(M._demoWinNum)
 
@@ -68,16 +73,19 @@ function M._setDemoBuffer(text, indent)
     vim.opt_local.modifiable = true
     vim.opt_local.readonly = false
 
-    -- Clear the highlights in the demo buffer
+    -- Clear all namespaced objects in the buffer (should only be our namespace)
     vim.api.nvim_buf_clear_namespace(0, 0, 0, -1)
 
     -- Clear the demo buffer
     vim.api.nvim_buf_set_lines(M._demoBufNum, 0, -1, false, {})
 
-    -- Set each line to be 80 chars wide
+    -- Set each line to be the max of 80 and text string length + indent
+    -- TODO: is there a space after the text line if the string is like 100
+    -- chars long and there's only 1 each line
+    -- local lineWidth = 0
     local lineWidth = 80
 
-    -- -5 so that we have some space on the very left
+    -- Leave space for indents
     local entriesPerLine = math.floor((lineWidth + 1 - indent) /
                                       (string.len(text) + 1))
     local startingLineIndex = 0
@@ -127,16 +135,18 @@ function M._setDemoBuffer(text, indent)
             lines
         )
 
-        -- Add highlights
+        -- Add highlights using extmarks
         for i,val in ipairs(colors) do
-            vim.api.nvim_buf_add_highlight(
+            vim.api.nvim_buf_set_extmark(
                 M._demoBufNum,
-                -1,
-                val.name,
+                M._nsid,
                 math.floor((i - 1) / entriesPerLine + startingLineIndex),
                 indent + (i - 1) % entriesPerLine * (string.len(text) + 1),
-                indent + (i - 1) % entriesPerLine * (string.len(text) + 1) +
-                    string.len(text)
+                {
+                    end_col = indent + (i - 1) % entriesPerLine *
+                              (string.len(text) + 1) + string.len(text),
+                    hl_group = val.name
+                }
             )
         end
 
@@ -170,19 +180,26 @@ function M.start(text, indent, pattern)
     -- Get and categorize all the highlight groups
     M._getHighlights(pattern)
 
-    -- Create plugin tab
+    -- Create plugin tab and record the buf and win numbers opened
     M._createTab()
 
     -- Add the texts and highlights to the tab
     M._setDemoBuffer(text, indent)
-end
 
-function M.getColorUnderCursor()
-
+    -- Set a local keymap for getting the color codes of higihlights in the demo
+    -- buffer
+    vim.keymap.set(
+        "n",
+        "K",
+        function() require("colorscheme-extender").getColorUnderCursor() end,
+        {
+            silent = true,
+            buffer = M._demoBufNum
+        }
+    )
 end
 
 -- On setup, create a new command for users to call
--- TODO: add support for multpile regex
 function M.setup()
     vim.api.nvim_create_user_command(
         "ColorschemeExtend",
