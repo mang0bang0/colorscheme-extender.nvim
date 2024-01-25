@@ -175,6 +175,55 @@ function M._createTab()
 
 end
 
+function M.getColorUnderCursor()
+    -- TODO: Check we're in the right window
+
+    -- Get the row and col pos of the cursor
+    local row, col = vim.api.nvim_win_get_cursor(M._demoWinNum)
+
+
+    -- Get only the extmarks of the word underneath
+    local inspect = vim.inspect_pos(M._demoBufNum, row, col,
+                                    {
+                                        syntax = false,
+                                        treesitter = false,
+                                        extmarks = true,
+                                        semantic_tokens = false
+                                    })
+
+    -- Check if the extmarks table is empty with next() (table would not be nil)
+    -- If it is empty, then it means there are no extmakrs (whitespace)
+    if next(inspect.extmarks) ~= nil then
+        local highlight = inspect.extmarks[1].opts.hl_group
+        local pString = "hl_group name: " .. highlight .. " "
+
+        if M._highlights[highlight].fg ~= nil then
+            pString = pString .. string.format("fg: #%X",
+                                               M._highlights[highlight].fg)
+
+            pString = pString .. " "
+        end
+
+
+        if M._highlights[highlight].bg ~= nil then
+            pString = pString .. string.format("bg: #%X",
+                                           M._highlights[highlight].bg)
+        end
+
+        print(pString)
+    else
+        print("No highlight!")
+    end
+
+    -- TODO: Open up a floating window? Or use Ex line?
+end
+
+function M._setIOBuffer()
+    -- Move to the IO window
+    vim.api.nvim_set_current_win(M._ioWinNum)
+
+end
+
 -- Testing functions to see as we go
 function M.start(text, indent, pattern)
     -- Get and categorize all the highlight groups
