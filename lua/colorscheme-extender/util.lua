@@ -145,7 +145,10 @@ function M.HSVSort(one, two)
         elseif compResult == ">" then
             return false
         -- If the bgs are the same, check if fg is defined. If it is, then
-        -- compare the fgs, otherwise just return true.
+        -- compare the fgs, otherwise return name order (needed for Lua) so that
+        -- going one way is true, going the other way has to be false, even if
+        -- they're the same and doesn't matter. This assumes all highlight
+        -- groups have different names (not unreasonable)
         else
             if oneHSV.fg then
                 compResult = M.compareHSV(oneHSV.fg, twoHSV.fg)
