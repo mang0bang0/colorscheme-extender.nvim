@@ -105,7 +105,7 @@ function M._setDemoBuffer(text, indent)
         -- Construct the text of a full line
         local lineText = util._constructLine(text, indent, entriesPerLine)
 
-        -- Populate an array with the guarenteed full lines
+        -- Populate an array with the lines of text in demo buffer
         local lines = {}
 
         -- "- 2" because numOfLines includes the not guarenteed full line and an
@@ -153,6 +153,18 @@ function M._setDemoBuffer(text, indent)
         startingLineIndex = startingLineIndex + numOfLines
     end
 
+    -- Add instructions at the bottom
+    vim.api.nvim_buf_set_lines(
+        M._demoBufNum,
+        startingLineIndex,
+        startingLineIndex + 2,
+        false,
+        {
+            "Press K (shift+k) to see the name and color code of the highlight",
+            "under your cursor"
+        }
+    )
+
     -- Set the buffer to no longer be modifiable
     vim.opt_local.modifiable = false
     vim.opt_local.readonly = true
@@ -175,12 +187,20 @@ function M._createTab()
 
 end
 
+-- Get the name and colorcode of the extmark highlight of the character under
+-- the cursor.
+-- NOTE: Only works on extmarks!
 function M.getColorUnderCursor()
-    -- TODO: Check we're in the right window
+    -- Technically the function is only called through a buffer-local binding,
+    -- so this will only activate if the user calls it on their own. It's fine,
+    -- but they probably won't get a lot of useful information, as this only
+    -- works on extmarks
+    if vim.api.nvim_get_current_win() ~= M._demoWinNum then
+        print("You are not in the demo buffer!")
+    end
 
     -- Get the row and col pos of the cursor
     local row, col = vim.api.nvim_win_get_cursor(M._demoWinNum)
-
 
     -- Get only the extmarks of the word underneath
     local inspect = vim.inspect_pos(M._demoBufNum, row, col,
@@ -207,7 +227,7 @@ function M.getColorUnderCursor()
 
         if M._highlights[highlight].bg ~= nil then
             pString = pString .. string.format("bg: #%X",
-                                           M._highlights[highlight].bg)
+                                               M._highlights[highlight].bg)
         end
 
         print(pString)
@@ -216,12 +236,6 @@ function M.getColorUnderCursor()
     end
 
     -- TODO: Open up a floating window? Or use Ex line?
-end
-
-function M._setIOBuffer()
-    -- Move to the IO window
-    vim.api.nvim_set_current_win(M._ioWinNum)
-
 end
 
 -- Testing functions to see as we go
