@@ -94,7 +94,7 @@ end
 
 -- Compares two HSV values one and two
 -- Returns "<", "=", or ">"
-function M._compareHSV(one, two, force)
+function M._compareHSV(one, two)
     -- If the two H values are different, then we just compare
     if one.h < two.h then
         return "<"
@@ -239,23 +239,6 @@ function M._getHighlights(pattern)
     M._removeDuplicates(colors[3])
 
     return highlights, colors
-end
-
-function M._createTab()
-    -- Create a new tab page to work with
-    vim.cmd.tabnew()
-
-    -- Get the buffer number of the demo buffer
-    M._demoBufNum = vim.api.nvim_get_current_buf()
-    M._demoWinNum = vim.api.nvim_get_current_win()
-
-    -- Open a vertically split window for I/O
-    vim.cmd.vnew()
-
-    -- Get the buffer number of the I/O buffer
-    M._ioBufNum = vim.api.nvim_get_current_buf()
-    M._ioWinNum = vim.api.nvim_get_current_win()
-
 end
 
 return M
