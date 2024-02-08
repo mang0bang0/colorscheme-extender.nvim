@@ -1,4 +1,5 @@
 local M = {}
+-- All functions not meant to be called by the user are placed under util.lua
 local util = require("colorscheme-extender.util")
 
 -- Table to hold highlights from nvim_get_hl()
@@ -15,52 +16,8 @@ M._demoWinNum = 0
 -- The buffer and window number of the I/O buffer
 M._ioBufNum = 0
 M._ioWinNum = 0
--- The namespace ID of the extmarks used for highlighting in the demo
--- buffer
+-- The namespace ID of the extmarks used for highlighting in the demo buffer
 M._nsid = 0
-
--- Fills out the M._colors table, filtering out highlights with names that match
--- the vim regex pattern
-function M._getHighlights(pattern)
-    -- Get a table of the highlights of the current colorscheme
-    local highlights = vim.api.nvim_get_hl(0, {})
-    local colors = {{}, {}, {}}
-
-    -- Three tables would be used for the three kinds of highlights: fg only, bg
-    -- only, and fg and background. The reason is because the user is probably
-    -- only looking for one of these three types. It doesn't make sense to mix
-    -- them when displaying in our buffer.
-
-    -- Construct the three tables from the global highlight table, checking if
-    -- the user provided regex matches. If there is a match, it is not added!
-    -- Note that it does not completely remove that color, it only excludes
-    -- highlight groups with that name
-    for k,v in pairs(highlights) do
-        if not (pattern and vim.regex(pattern):match_str(k)) then
-            if v.fg and v.bg then
-                table.insert(colors[3], {name = k, fg = v.fg, bg = v.bg})
-            elseif v.fg then
-                table.insert(colors[1], {name = k, fg = v.fg})
-            elseif v.bg then
-                table.insert(colors[2], {name = k, bg = v.bg})
-            end
-        else
-            print("Filtered " .. k .. "\n")
-        end
-    end
-
-    -- Sort the three tables based on HSV
-    table.sort(colors[1], util._HSVSort)
-    table.sort(colors[2], util._HSVSort)
-    table.sort(colors[3], util._HSVSort)
-
-    -- Remove duplicate entriers for the three tables
-    util._removeDuplicates(colors[1])
-    util._removeDuplicates(colors[2])
-    util._removeDuplicates(colors[3])
-
-    return highlights, colors
-end
 
 -- Sets the demo buffer with indents and text highlighted with all
 -- unique highlights in the colorscheme
@@ -172,20 +129,26 @@ function M._setDemoBuffer(text, indent)
     vim.opt_local.readonly = true
 end
 
-function M._createTab()
-    -- Create a new tab page to work with
-    vim.cmd.tabnew()
+function M._setIOBuffer()
+    -- Move to the IO window
+    vim.api.nvim_set_current_win(M._ioWinNum)
 
-    -- Get the buffer number of the demo buffer
-    M._demoBufNum = vim.api.nvim_get_current_buf()
-    M._demoWinNum = vim.api.nvim_get_current_win()
+    -- Control flow:
+    -- Subscribe to changes the buffer, and record what text has been changed
+    -- and which line number has been changed
+    -- Set up an TextChanged autocmd. On callback, check what has been changed
+    -- and perform actions on the demo buffer
 
-    -- Open a vertically split window for I/O
-    vim.cmd.vnew()
+    -- Subscribe to changes in this buffer
 
-    -- Get the buffer number of the I/O buffer
-    M._ioBufNum = vim.api.nvim_get_current_buf()
-    M._ioWinNum = vim.api.nvim_get_current_win()
+
+    --TODO: floating windows as UI, compared to editing the buffer directly?
+    --      or we have one line say "word" and the line under takes input
+
+    -- TODO: have a list of "bookmarked colors" in the IO buffer, where the
+    -- user can add from the demo buffer and scroll the cursors through
+
+    -- TODO: for bookmarking fgbg, pick either only fg, only bg, and both?
 
 end
 
@@ -243,13 +206,16 @@ end
 -- Testing functions to see as we go
 function M.start(text, indent, pattern)
     -- Get and categorize all the highlight groups
-    M._highlights, M._colors = M._getHighlights(pattern)
+    M._highlights, M._colors = util._getHighlights(pattern)
 
     -- Create plugin tab and record the buf and win numbers opened
-    M._createTab()
+    util._createTab()
 
     -- Add the texts and highlights to the tab
     M._setDemoBuffer(text, indent)
+
+    -- Set up the UI in the IO buffer
+    M._setIOBuffer()
 
     -- Set a local keymap for getting the color codes of higihlights in the demo
     -- buffer
@@ -257,11 +223,22 @@ function M.start(text, indent, pattern)
         "n",
         "K",
         function() require("colorscheme-extender").getColorUnderCursor() end,
-        {
-            silent = true,
-            buffer = M._demoBufNum
-        }
+        {silent = true, buffer = M._demoBufNum}
     )
+
+    -- Testing nvim_buf_attach
+    local online = function(_, _, _, firstline, _, _)
+        local text = vim.api.nvim_buf_get_lines(M._ioBufNum,
+                                                firstline,
+                                                firstline + 1,
+                                                false)
+
+        M._setDemoBuffer(text, 2)
+    end
+
+    vim.api.nvim_buf_attach(M._ioBufNum,
+                            false,
+                            {on_lines = online})
 end
 
 -- On setup, create a new command for users to call

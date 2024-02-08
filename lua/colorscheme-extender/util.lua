@@ -4,7 +4,7 @@ local M = {}
 -- entry is the string of each entry, indent is an integer that's the number of
 -- spaces before the text, and entriesPerLine is the number of entries on this
 -- line
-function M._constructLine(entry, indent, entriesPerLine)
+function M._constructLine(entry, indent, numOfEntriesInLine)
     local lineText = ""
 
     -- First add the indents in the beginning
@@ -13,9 +13,9 @@ function M._constructLine(entry, indent, entriesPerLine)
     end
 
     -- Then add the entries after
-    for i = 1, entriesPerLine do
+    for i = 1, numOfEntriesInLine do
         lineText = lineText .. entry
-        if i < entriesPerLine then
+        if i < numOfEntriesInLine then
             lineText = lineText .. " "
         end
     end
@@ -193,6 +193,68 @@ function M._removeDuplicates(tab)
 
         first = false
     end
+
+end
+
+-- Fills out a colors table, filtering out highlights with names that match
+-- the vim regex pattern
+-- Returns all the highlights from vim.api.nvim_get_hl(), and a color table
+-- containing the fg table, bg table, and fgbg table
+function M._getHighlights(pattern)
+    -- Get a table of the highlights of the current colorscheme
+    local highlights = vim.api.nvim_get_hl(0, {})
+    local colors = {{}, {}, {}}
+
+    -- Three tables would be used for the three kinds of highlights: fg only, bg
+    -- only, and fg and background. The reason is because the user is probably
+    -- only looking for one of these three types. It doesn't make sense to mix
+    -- them when displaying in our buffer.
+
+    -- Construct the three tables from the global highlight table, checking if
+    -- the user provided regex matches. If there is a match, it is not added!
+    -- Note that it does not completely remove that color, it only excludes
+    -- highlight groups with that name
+    for k,v in pairs(highlights) do
+        if not (pattern and vim.regex(pattern):match_str(k)) then
+            if v.fg and v.bg then
+                table.insert(colors[3], {name = k, fg = v.fg, bg = v.bg})
+            elseif v.fg then
+                table.insert(colors[1], {name = k, fg = v.fg})
+            elseif v.bg then
+                table.insert(colors[2], {name = k, bg = v.bg})
+            end
+        else
+            print("Filtered " .. k .. "\n")
+        end
+    end
+
+    -- Sort the three tables based on HSV
+    table.sort(colors[1], M._HSVSort)
+    table.sort(colors[2], M._HSVSort)
+    table.sort(colors[3], M._HSVSort)
+
+    -- Remove duplicate entriers for the three tables
+    M._removeDuplicates(colors[1])
+    M._removeDuplicates(colors[2])
+    M._removeDuplicates(colors[3])
+
+    return highlights, colors
+end
+
+function M._createTab()
+    -- Create a new tab page to work with
+    vim.cmd.tabnew()
+
+    -- Get the buffer number of the demo buffer
+    M._demoBufNum = vim.api.nvim_get_current_buf()
+    M._demoWinNum = vim.api.nvim_get_current_win()
+
+    -- Open a vertically split window for I/O
+    vim.cmd.vnew()
+
+    -- Get the buffer number of the I/O buffer
+    M._ioBufNum = vim.api.nvim_get_current_buf()
+    M._ioWinNum = vim.api.nvim_get_current_win()
 
 end
 
