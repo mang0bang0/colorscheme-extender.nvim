@@ -27,7 +27,7 @@ end
 -- Takes RRGGBB (hex now represented as decimal)
 -- Returns nil if nil is passed in, otherwise a table that looks like:
 -- {h = h, s = s, v = v}
-function M.RGBToHSV(rrggbb)
+function M._RGBToHSV(rrggbb)
     -- If nothing is passed in, return nothing.
     -- This is used because the function that calls this one can pass in nil
     -- values and expects nil in return
@@ -83,18 +83,18 @@ end
     }
     Note that fg or bg can be equal to nil
 --]]
-function M.getHSV(color)
+function M._getHSV(color)
     -- Get separate HSV values as a table. Can be nil if say colors.bg doesn't
     -- exist
-    local fgHSV = M.RGBToHSV(color.fg)
-    local bgHSV = M.RGBToHSV(color.bg)
+    local fgHSV = M._RGBToHSV(color.fg)
+    local bgHSV = M._RGBToHSV(color.bg)
 
     return {fg = fgHSV, bg = bgHSV}
 end
 
 -- Compares two HSV values one and two
 -- Returns "<", "=", or ">"
-function M.compareHSV(one, two, force)
+function M._compareHSV(one, two, force)
     -- If the two H values are different, then we just compare
     if one.h < two.h then
         return "<"
@@ -121,7 +121,7 @@ end
 -- Function that compares two color entries in the color table.
 -- Takes two color table entires, returns true if the first color is
 -- lower on the HSV scale
-function M.HSVSort(one, two)
+function M._HSVSort(one, two)
     -- These two variables have this structure:
     --[[
     {
@@ -132,13 +132,13 @@ function M.HSVSort(one, two)
     -- Note that fg or bg can equal nil if this highlight group doesn't have fg
     -- or bg defined
 
-    local oneHSV = M.getHSV(one)
-    local twoHSV = M.getHSV(two)
+    local oneHSV = M._getHSV(one)
+    local twoHSV = M._getHSV(two)
     local compResult
 
     -- If bg exists, we compare it first
     if oneHSV.bg then
-        compResult = M.compareHSV(oneHSV.bg, twoHSV.bg)
+        compResult = M._compareHSV(oneHSV.bg, twoHSV.bg)
 
         if compResult == "<" then
             return true
@@ -151,7 +151,7 @@ function M.HSVSort(one, two)
         -- groups have different names (not unreasonable)
         else
             if oneHSV.fg then
-                compResult = M.compareHSV(oneHSV.fg, twoHSV.fg)
+                compResult = M._compareHSV(oneHSV.fg, twoHSV.fg)
 
                 if compResult == "<" then
                     return true
@@ -166,7 +166,7 @@ function M.HSVSort(one, two)
         end
     -- Otherwise we compare bg or fg, whichever exists
     else
-        compResult = M.compareHSV(oneHSV.fg, twoHSV.fg)
+        compResult = M._compareHSV(oneHSV.fg, twoHSV.fg)
 
         if compResult == "<"  then
             return true
@@ -178,7 +178,7 @@ function M.HSVSort(one, two)
     end
 end
 
-function M.removeDuplicates(tab)
+function M._removeDuplicates(tab)
     local prev = tab[#tab]
     local first = true
 

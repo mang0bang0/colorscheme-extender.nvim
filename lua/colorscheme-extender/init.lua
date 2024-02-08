@@ -23,7 +23,8 @@ M._nsid = 0
 -- the vim regex pattern
 function M._getHighlights(pattern)
     -- Get a table of the highlights of the current colorscheme
-    M._highlights = vim.api.nvim_get_hl(0, {})
+    local highlights = vim.api.nvim_get_hl(0, {})
+    local colors = {{}, {}, {}}
 
     -- Three tables would be used for the three kinds of highlights: fg only, bg
     -- only, and fg and background. The reason is because the user is probably
@@ -34,14 +35,14 @@ function M._getHighlights(pattern)
     -- the user provided regex matches. If there is a match, it is not added!
     -- Note that it does not completely remove that color, it only excludes
     -- highlight groups with that name
-    for k,v in pairs(M._highlights) do
+    for k,v in pairs(highlights) do
         if not (pattern and vim.regex(pattern):match_str(k)) then
             if v.fg and v.bg then
-                table.insert(M._colors[3], {name = k, fg = v.fg, bg = v.bg})
+                table.insert(colors[3], {name = k, fg = v.fg, bg = v.bg})
             elseif v.fg then
-                table.insert(M._colors[1], {name = k, fg = v.fg})
+                table.insert(colors[1], {name = k, fg = v.fg})
             elseif v.bg then
-                table.insert(M._colors[2], {name = k, bg = v.bg})
+                table.insert(colors[2], {name = k, bg = v.bg})
             end
         else
             print("Filtered " .. k .. "\n")
@@ -49,15 +50,16 @@ function M._getHighlights(pattern)
     end
 
     -- Sort the three tables based on HSV
-    table.sort(M._colors[1], util.HSVSort)
-    table.sort(M._colors[2], util.HSVSort)
-    table.sort(M._colors[3], util.HSVSort)
+    table.sort(colors[1], util._HSVSort)
+    table.sort(colors[2], util._HSVSort)
+    table.sort(colors[3], util._HSVSort)
 
     -- Remove duplicate entriers for the three tables
-    util.removeDuplicates(M._colors[1])
-    util.removeDuplicates(M._colors[2])
-    util.removeDuplicates(M._colors[3])
+    util._removeDuplicates(colors[1])
+    util._removeDuplicates(colors[2])
+    util._removeDuplicates(colors[3])
 
+    return highlights, colors
 end
 
 -- Sets the demo buffer with indents and text highlighted with all
@@ -241,7 +243,7 @@ end
 -- Testing functions to see as we go
 function M.start(text, indent, pattern)
     -- Get and categorize all the highlight groups
-    M._getHighlights(pattern)
+    M._highlights, M._colors = M._getHighlights(pattern)
 
     -- Create plugin tab and record the buf and win numbers opened
     M._createTab()
