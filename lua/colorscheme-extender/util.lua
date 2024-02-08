@@ -94,7 +94,7 @@ end
 
 -- Compares two HSV values one and two
 -- Returns "<", "=", or ">"
-function M._compareHSV(one, two, force)
+function M._compareHSV(one, two)
     -- If the two H values are different, then we just compare
     if one.h < two.h then
         return "<"

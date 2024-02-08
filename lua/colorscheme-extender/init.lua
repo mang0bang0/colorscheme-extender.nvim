@@ -1,5 +1,6 @@
 local M = {}
--- All functions not meant to be called by the user are placed under util.lua
+-- All functions not meant to be called by the user and not operating on the
+-- buffers are placed under util.lua
 local util = require("colorscheme-extender.util")
 
 -- Table to hold highlights from nvim_get_hl()
@@ -18,6 +19,23 @@ M._ioBufNum = 0
 M._ioWinNum = 0
 -- The namespace ID of the extmarks used for highlighting in the demo buffer
 M._nsid = 0
+
+function M._createTab()
+    -- Create a new tab page to work with
+    vim.cmd.tabnew()
+
+    -- Get the buffer number of the demo buffer
+    M._demoBufNum = vim.api.nvim_get_current_buf()
+    M._demoWinNum = vim.api.nvim_get_current_win()
+
+    -- Open a vertically split window for I/O
+    vim.cmd.vnew()
+
+    -- Get the buffer number of the I/O buffer
+    M._ioBufNum = vim.api.nvim_get_current_buf()
+    M._ioWinNum = vim.api.nvim_get_current_win()
+
+end
 
 -- Sets the demo buffer with indents and text highlighted with all
 -- unique highlights in the colorscheme
@@ -180,19 +198,18 @@ function M.getColorUnderCursor()
     -- If it is empty, then it means there are no extmakrs (whitespace)
     if next(inspect.extmarks) ~= nil then
         local highlight = inspect.extmarks[1].opts.hl_group
-        local pString = "hl_group name: " .. highlight .. " "
+        local pString = "hl_group name: " .. highlight
 
         if M._highlights[highlight].fg ~= nil then
-            pString = pString .. string.format("fg: #%X",
-                                               M._highlights[highlight].fg)
-
-            pString = pString .. " "
+            pString = pString .. ", " ..
+                      string.format("fg: #%X",
+                                    M._highlights[highlight].fg)
         end
 
-
         if M._highlights[highlight].bg ~= nil then
-            pString = pString .. string.format("bg: #%X",
-                                               M._highlights[highlight].bg)
+            pString = pString .. ", " ..
+                      string.format("bg: #%X",
+                                    M._highlights[highlight].bg)
         end
 
         print(pString)
@@ -209,7 +226,7 @@ function M.start(text, indent, pattern)
     M._highlights, M._colors = util._getHighlights(pattern)
 
     -- Create plugin tab and record the buf and win numbers opened
-    util._createTab()
+    M._createTab()
 
     -- Add the texts and highlights to the tab
     M._setDemoBuffer(text, indent)
