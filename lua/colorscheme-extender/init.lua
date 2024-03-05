@@ -9,8 +9,8 @@ M._highlights = {}
 -- Module-level vars to hold text, indent, regex pattern, linewidth
 M._text = nil
 M._indent = nil
-M._pattern = nil
 M._lineWidth = nil
+M._pattern = nil
 
 -- Tables to hold colors. Value is the RRGGBB value
 -- Index 1 is fg, 2 is bg, 3 is fgbg. Only indices and not keys are used for
@@ -20,13 +20,23 @@ M._colors = {{}, {}, {}}
 -- The buffer and window number of the demo buffer
 M._demoBufNum = 0
 M._demoWinNum = 0
+
 -- The buffer and window number of the I/O buffer
 M._ioBufNum = 0
 M._ioWinNum = 0
+
 -- The namespace ID used by the plugin in a table
-M._nsid = {
+M._nsID = {
     hl = nil,
     io = nil
+}
+
+-- The extmarks for each of the input variables in the IO buffer
+M._extID = {
+    text = nil,
+    indent = nil,
+    lineWidth = nil,
+    regex = nil,
 }
 
 -- TOOD: Set filetype of the demo buffer and IO buffer
@@ -51,7 +61,9 @@ end
 -- unique highlights in the colorscheme
 function M._setDemoBuffer(text, indent, lineWidth)
     -- Create a namespace for our highlights and record its nsid
-    M._nsid.hl = vim.api.nvim_create_namespace("colex-hl")
+    if M._nsID.hl == nil then
+        M._nsID.hl = vim.api.nvim_create_namespace("colex-hl")
+    end
 
     -- Move to the demo window
     vim.api.nvim_set_current_win(M._demoWinNum)
@@ -66,7 +78,7 @@ function M._setDemoBuffer(text, indent, lineWidth)
     -- Clear the demo buffer
     vim.api.nvim_buf_set_lines(M._demoBufNum, 0, -1, false, {})
 
-    -- Set each line to be the max of 80 and text string length + indent
+    -- Set each line to be the max of lineWidth and text string length + indent
     -- TODO: is there a space after the text line if the string is like 100
     -- chars long and there's only 1 each line
     -- local lineWidth = 0
@@ -125,7 +137,7 @@ function M._setDemoBuffer(text, indent, lineWidth)
         for i,val in ipairs(colors) do
             vim.api.nvim_buf_set_extmark(
                 M._demoBufNum,
-                M._nsid.hl,
+                M._nsID.hl,
                 math.floor((i - 1) / entriesPerLine + startingLineIndex),
                 indent + (i - 1) % entriesPerLine * (string.len(text) + 1),
                 {
@@ -177,45 +189,65 @@ function M._setIOBuffer(text, indent, lineWidth, pattern)
     -- Move to the IO window
     vim.api.nvim_set_current_win(M._ioWinNum)
 
+    -- Clear the IO buffere
+    vim.api.nvim_buf_set_lines(M._ioBufNum, 0, -1, false, {})
+
     -- Do initial formatting
     local bufferText = {
+        "Values on lines indicated by 'i' can be edited! To confirm the",
+        "changes, perform the action of leaving insert mode! Think of it as",
+        "hitting OK on a form.",
+        "No multi-line inputs please. They will be discarded.",
+        "",
         "Display Text (in one line):",
         text,
         "----------",
-        "Indent Length (positive number only):",
+        "Indent Length (between 0 and 100):",
         tostring(indent),
         "----------",
         "Line Width (positive number only):",
         tostring(lineWidth),
         "----------",
-        "Vim Regex Pattern to Filter Out:",
+        "Vim Regex Pattern to Filter Out (matches are filtered):",
         pattern ~= nil and pattern or "",
         "----------",
         "Bookmarks:"
     }
 
-    vim.api.nvim_buf_set_lines(
-        M._ioBufNum,
-        0,
-        #bufferText,
-        false,
-        bufferText
-    )
+    vim.api.nvim_buf_set_lines(M._ioBufNum, 0, #bufferText, false, bufferText)
 
-    -- Set extmarks for each of the input fields
-    -- First create a namespace for each so we can differentiate
-    M._nsid.io = vim.api.nvim_create_namespace("colex-io")
-    -- Then put an extmark on each input line
+    -- Either this is the first time the buffer is being created, and the
+    -- extmarks haven't been created yet, or the extmarks need to be redone, so
+    -- clear delete them
+    if M._nsID.io == nil then
+        M._nsID.io = vim.api.nvim_create_namespace("colex-io")
+        -- Then put an extmark on each input line/field
+        M._extID.text      = vim.api.nvim_buf_set_extmark(M._ioBufNum,
+                                                          M._nsID.io, 6, -1,
+                                                          {sign_text = "i"})
+        M._extID.indent    = vim.api.nvim_buf_set_extmark(M._ioBufNum,
+                                                          M._nsID.io, 9, -1,
+                                                          {sign_text = "i"})
+        M._extID.lineWidth = vim.api.nvim_buf_set_extmark(M._ioBufNum,
+                                                          M._nsID.io, 12, -1,
+                                                          {sign_text = "i"})
+        M._extID.regex     = vim.api.nvim_buf_set_extmark(M._ioBufNum,
+                                                          M._nsID.io, 15, -1,
+                                                          {sign_text = "i"})
+    else
+        vim.api.nvim_buf_clear_namespace(M._ioBufNum, M._nsID.io, 0, -1)
 
-    -- NOTE: THIS FOLLOWING PARAGRAPH SHOULD BE IN A DIFFERENT FUNCTION
-    -- After every insert leave, we check the position of all the extmarks in IO
-    -- buffer to make sure that they stay on the correct lines, meaning that the
-    -- user didn't add multi-line inputs, which are forbidden
-    -- If it's good, then we proceed, otherwise we restore the IO buffer to the
-    -- most recent state (refilling the text, indent, etc.)
+        vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 6, -1,
+                                     {sign_text = "i", id = M._extID.text})
+        vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 9, -1,
+                                     {sign_text = "i", id = M._extID.indent})
+        vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 12, -1,
+                                     {sign_text = "i", id = M._extID.lineWidth})
+        vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 15, -1,
+                                     {sign_text = "i", id = M._extID.regex})
+    end
 
     -- TODO: for bookmarking fgbg, pick either only fg, only bg, and both?
-
 end
 
 -- Get the name and colorcode of the extmark highlight of the character under
@@ -288,7 +320,7 @@ function M.start(text, indent, lineWidth, pattern)
     -- Set up the UI in the IO buffer
     M._setIOBuffer(text, indent, lineWidth, pattern)
 
-    -- Set a local keymap for getting the color codes of higihlights in the demo
+    -- Set a local keymap for getting the color codes of highlights in the demo
     -- buffer
     vim.keymap.set(
         "n",
@@ -296,13 +328,179 @@ function M.start(text, indent, lineWidth, pattern)
         function() require("colorscheme-extender").getColorUnderCursor() end,
         {silent = true, buffer = M._demoBufNum}
     )
+
+    -- Register a callback for InsertLeave, where the IO buffer is parsed for
+    -- differences.
+    -- If differences are found, redraw the demo buffer.
+    -- If formatting is wrong, then redraw the IO buffer.
+    vim.api.nvim_create_autocmd( {"InsertLeave"},
+        {
+            callback = function ()
+                local shouldUpdateBuffer = false
+                local shouldUpdateRegex = false
+                -- Check for improper formatting, which is when the extmarks
+                -- are no longer in the right rows. If found, reformat the IO
+                -- buffer with the last known settings.
+
+                local textRet = vim.api.nvim_buf_get_extmark_by_id(
+                    M._ioBufNum,
+                    M._nsID.io,
+                    M._extID.text,
+                    {details = false, hl_name = false}
+                )
+                local indentRet = vim.api.nvim_buf_get_extmark_by_id(
+                    M._ioBufNum,
+                    M._nsID.io,
+                    M._extID.indent,
+                    {details = false, hl_name = false}
+                )
+                local lineWidthRet = vim.api.nvim_buf_get_extmark_by_id(
+                    M._ioBufNum,
+                    M._nsID.io,
+                    M._extID.lineWidth,
+                    {details = false, hl_name = false}
+                )
+                local regexRet = vim.api.nvim_buf_get_extmark_by_id(
+                    M._ioBufNum,
+                    M._nsID.io,
+                    M._extID.regex,
+                    {details = false, hl_name = false}
+                )
+
+                if textRet[1] ~= 6 then
+                    M._setIOBuffer(M._text, M._indent, M._lineWidth, M._pattern)
+                    return
+                end
+
+                if indentRet[1] ~= 9 then
+                    M._setIOBuffer(M._text, M._indent, M._lineWidth, M._pattern)
+                    return
+                end
+
+                if lineWidthRet[1] ~= 12 then
+                    M._setIOBuffer(M._text, M._indent, M._lineWidth, M._pattern)
+                    return
+                end
+
+                if regexRet[1] ~= 15 then
+                    M._setIOBuffer(M._text, M._indent, M._lineWidth, M._pattern)
+                    return
+                end
+
+                -- Getting here means that there are no multiline inputs.
+                -- We can now parse each input line for setting changes
+                -- Get the line for textInput
+                local textIn      = vim.api.nvim_buf_get_lines(M._ioBufNum, 6,
+                                                               7, true)
+                local indentIn    = vim.api.nvim_buf_get_lines(M._ioBufNum, 9,
+                                                               10, true)
+                local lineWidthIn = vim.api.nvim_buf_get_lines(M._ioBufNum, 12,
+                                                               13, true)
+                local regexIn     = vim.api.nvim_buf_get_lines(M._ioBufNum, 15,
+                                                               16, true)
+
+                -- If the new input is different from the last one, then we
+                -- record that a change is needed, and update the module-wide
+                -- variable
+                if textIn[1] ~= M._text then
+                    shouldUpdateBuffer = true
+                    M._text = textIn[1]
+                end
+
+                -- TODO: IMPORTANT: You can't just check one by one whether or
+                -- not these variables make sense together.
+                -- indent + string.len(text) <= textWidth
+                -- Because of this, only after parsing all three things can we
+                -- check to see if this relationship is fulfilled. If it is
+                -- fulfilled, then we update the demo buffer. Otherwise we
+                -- revert back to what we had before.
+
+                -- Parse lineWidth first because indent should only be between
+                -- 0 and lineWidth - len(text)
+
+                local lineWidthNum = tonumber(lineWidthIn[1])
+                -- If the user inputs invalid value (out-of-bounds or alphas),
+                if lineWidthNum == nil or
+                    lineWidthIn > 1000 or
+                    lineWidthNum < (string.len(M._text) + 1) then
+
+                    -- Delete the extmark on that line
+                    vim.api.nvim_buf_del_extmark(M._ioBufNum, M._nsID.io,
+                                                 M._extID.indent)
+
+                    -- Set the line to the old valid indent number
+                    vim.api.nvim_buf_set_lines(
+                        M._ioBufNum,
+                        9,
+                        10,
+                        false,
+                        {tostring(M._indent)}
+                    )
+
+                    -- Add back the deleted extmark
+                    -- This is done because the behavior for extmarks when using
+                    -- set_lines is undefined
+                    vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 9, -1,
+                                                 {sign_text = "i"})
+                else
+                    if indentNum ~= M._indent then
+                        shouldUpdateBuffer = true
+                        M._indent = indentNum
+                    end
+                end
+
+                -- Two cases can occur:
+                -- 1. The user inputs invalid. Revert back to last valid.
+                -- 2. The user inputs valid. Record and update in demo buffer.
+                local indentNum = tonumber(indentIn[1])
+                -- If the user inputs invalid value (out-of-bounds or alphas),
+                if indentNum == nil or indentNum > 100 or indentNum < 0 then
+                    -- Delete the extmark on that line
+                    vim.api.nvim_buf_del_extmark(M._ioBufNum, M._nsID.io,
+                                                 M._extID.indent)
+
+                    -- Set the line to the old valid indent number
+                    vim.api.nvim_buf_set_lines(
+                        M._ioBufNum,
+                        9,
+                        10,
+                        false,
+                        {tostring(M._indent)}
+                    )
+
+                    -- Add back the deleted extmark
+                    -- This is done because the behavior for extmarks when using
+                    -- set_lines is undefined
+                    vim.api.nvim_buf_set_extmark(M._ioBufNum, M._nsID.io, 9, -1,
+                                                 {sign_text = "i"})
+                else
+                    if indentNum ~= M._indent then
+                        shouldUpdateBuffer = true
+                        M._indent = indentNum
+                    end
+                end
+
+                -- TODO: add lineWidth handling
+
+                -- TODO: add regex updates
+
+                if shouldUpdateBuffer then
+                    print("redraw!\n")
+                    M._setDemoBuffer(M._text, M._indent, M._lineWidth)
+                    vim.api.nvim_set_current_win(M._ioWinNum)
+                end
+
+            end,
+            buffer = M._ioBufNum,
+        }
+    )
 end
 
 -- On setup, create a new command for users to call
 function M.setup()
     vim.api.nvim_create_user_command(
         "ColorschemeExtend",
-        function () require("colorscheme-extender").start("hello", 2,
+        function () require("colorscheme-extender").start("hello", 2, 80,
                                                           "^DevIcon") end,
         {}
     )
